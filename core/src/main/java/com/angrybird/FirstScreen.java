@@ -43,13 +43,13 @@ public class FirstScreen implements Screen {
             float x = Gdx.input.getX() * (1500f / Gdx.graphics.getWidth());
             float y = (800 - Gdx.input.getY() * (800f / Gdx.graphics.getHeight()));
 
-            // Check play button bounds (matching the actual position where it's drawn)
+            // Check play button bounds
             if (x >= 170 && x <= 570 && y >= 0 && y <= 250) {  // 170+400=570 for width
-                game.setScreen(new GameScreen(game));
+                game.setScreen(new LevelScreen(game)); // Change this line to open LevelScreen
                 dispose();
             }
 
-            // Check exit button bounds (matching the actual position where it's drawn)
+            // Check exit button bounds
             if (x >= 1000 && x <= 1300 && y >= 100 && y <= 180) {  // 1000+300=1300 for width, 100+80=180 for height
                 Gdx.app.exit();
             }
@@ -64,23 +64,11 @@ public class FirstScreen implements Screen {
         exit.dispose();
     }
 
-    @Override
-    public void show() {
-    }
-
-    @Override
-    public void resize(int width, int height) {
-    }
-
-    @Override
-    public void pause() {
-    }
-
-    @Override
-    public void resume() {
-    }
-
-    @Override
-    public void hide() {
-    }
+    @Override public void show() {}
+    @Override public void resize(int width, int height) {}
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 }
+
+

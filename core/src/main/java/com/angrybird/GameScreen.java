@@ -17,8 +17,12 @@ public class GameScreen implements Screen {
     private Texture pig;
     private Texture pause;
 
-    public GameScreen(MyAngryBird game) {
+    // New variable to determine the level
+    private int level;
+
+    public GameScreen(MyAngryBird game, int level) {
         this.game = game;
+        this.level = level; // Store the level
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 1500, 800);
 
@@ -28,7 +32,7 @@ public class GameScreen implements Screen {
         redBird = new Texture("ang.png");
         blueBird = new Texture("bb.png");
         blackBird = new Texture("black2.png");
-        background = new Texture("background.png");
+        background = new Texture("background.png"); // You might want to use different backgrounds per level
         pig = new Texture("bgd.png");
         pause = new Texture("pause.png");
     }
@@ -56,7 +60,7 @@ public class GameScreen implements Screen {
 
             // Check pause button bounds
             if (x >= 0 && x <= 100 && y >= 730 && y <= 790) {
-                game.setScreen(new FirstScreen(game));
+                game.setScreen(new FirstScreen(game)); // Return to first screen
                 dispose();
             }
         }
@@ -73,9 +77,25 @@ public class GameScreen implements Screen {
         pause.dispose();
     }
 
-    @Override public void show() {}
-    @Override public void resize(int width, int height) {}
-    @Override public void pause() {}
-    @Override public void resume() {}
-    @Override public void hide() {}
+    @Override
+    public void show() {
+
+    }
+    @Override
+    public void resize(int width, int height) {
+
+    }
+    @Override
+    public void pause() {
+
+    }
+    @Override
+    public void resume() {
+
+    }
+    @Override
+    public void hide() {
+
+    }
 }
+
