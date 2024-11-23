@@ -10,7 +10,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 public class FirstScreen implements Screen {
     final MyAngryBird game;
     OrthographicCamera camera;
-    SpriteBatch batch;
+    public SpriteBatch batch;
     private final Texture background;
     private Texture startButton;
     private Texture exit;
@@ -61,6 +61,7 @@ public class FirstScreen implements Screen {
         batch.dispose();
         background.dispose();
         startButton.dispose();
+
         exit.dispose();
     }
 

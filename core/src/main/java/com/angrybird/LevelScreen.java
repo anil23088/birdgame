@@ -38,9 +38,9 @@ public class LevelScreen implements Screen {
 
         batch.begin();
         batch.draw(background, 0, 0, 1500, 800); // Draw background
-        batch.draw(level1Button, 600, 500, 400, 100); // Draw Level 1 button
-        batch.draw(level2Button, 600, 350, 400, 100); // Draw Level 2 button
-        batch.draw(level3Button, 600, 200, 400, 100); // Draw Level 3 button
+        batch.draw(level3Button, 600, 450, 400, 85); // Draw Level 1 button
+        batch.draw(level2Button, 600, 300, 400, 85); // Draw Level 2 button
+        batch.draw(level1Button, 600, 150, 400, 80); // Draw Level 3 button
         batch.end();
 
         // Handle input for level selection
@@ -48,21 +48,20 @@ public class LevelScreen implements Screen {
             float x = Gdx.input.getX();
             float y = Gdx.graphics.getHeight() - Gdx.input.getY(); // Invert y-coordinate
 
-            // Check if Level 1 button is clicked
-            if (x >= 100 && x <= 600 && y >= 500 && y <= 600) {
-                game.setScreen(new GameScreen(game, 1)); // Go to GameScreen for Level 1
+            if (x >= 100 && x <= 600 && y >= 270 && y <= 320) {
+                game.setScreen(new GameScreen3(game, 3)); // Go to GameScreen for Level 1
                 dispose();
             }
 
-            // Check if Level 2 button is clicked
-            if (x >= 100 && x <= 600 && y >= 350 && y <= 450) {
-                game.setScreen(new GameScreen(game, 2)); // Go to GameScreen for Level 2
+
+            if (x >= 100 && x <= 600 && y >= 180 && y <= 240) {
+                game.setScreen(new GameScreen2(game, 2)); // Go to GameScreen for Level 2
                 dispose();
             }
 
-            // Check if Level 3 button is clicked
-            if (x >= 100 && x <= 600 && y >= 200 && y <= 300) {
-                game.setScreen(new GameScreen(game, 3)); // Go to GameScreen for Level 3
+
+            if (x >= 100 && x <= 600 && y >= 100 && y <= 140) {
+                game.setScreen(new GameScreen(game, 1)); // Go to GameScreen for Level 3
                 dispose();
             }
         }
