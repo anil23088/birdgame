@@ -1,72 +1,85 @@
 package com.angrybird;
 
+
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.physics.box2d.*;
-//import levels.MainLevel;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.physics.box2d.Body;
+import com.badlogic.gdx.physics.box2d.BodyDef;
+import com.badlogic.gdx.physics.box2d.CircleShape;
 
-public class Pig {
-    private MainLevel level;
-    private Texture texture;
-    private Body body;
-    private int health;
-    private boolean isDead;
+public abstract class Pig {
+    protected MainLevel level;
+    protected Texture texture;
+    protected Body body;
+    protected float textureWidth;  // Pig texture width
+    protected float textureHeight; // Pig texture height
+    protected BodyDef pDef;
+    protected float posx;
+    protected float posy;
+    protected float rad;
+    protected int hitPoints;
 
-    public Pig(MainLevel level, float xpos, float ypos, int health) {
+    public Pig(MainLevel level, float posx, float posy) {
         this.level = level;
-        this.health = health;
-        this.isDead = false;
-
-        texture = new Texture("big pig.png");
-        createPigBody(xpos, ypos);
-    }
-
-    private void createPigBody(float xpos, float ypos) {
-        BodyDef bodyDef = new BodyDef();
-        bodyDef.type = BodyDef.BodyType.DynamicBody;
-        bodyDef.position.set(xpos / MainLevel.ppm, ypos / MainLevel.ppm);
-
-        body = level.world.createBody(bodyDef);
-
-        CircleShape shape = new CircleShape();
-        shape.setRadius(0.5f);
-
-        FixtureDef fixtureDef = new FixtureDef();
-        fixtureDef.shape = shape;
-        fixtureDef.density = 1f;
-        body.createFixture(fixtureDef);
-        shape.dispose();
-
+        this.posx = posx;
+        this.posy = posy;
+        initializeTexture();
+        createCircle();
+        initializeHitPoints();
         body.setUserData(this);
     }
 
-    public void takeDamage(int damage) {
-        if (!isDead) {
-            health -= damage;
-            if (health <= 0) {
-                isDead = true;
-                die();
+    // Abstract method for subclasses to specify their texture and size
+    protected abstract void initializeTexture();
+
+    protected abstract void initializeHitPoints();
+
+    public void handleCollision() {
+        hitPoints--;
+        if (hitPoints <= 0 && body != null) {
+            if (!level.bodiesToDestroy.contains(body, true)) {
+                level.bodiesToDestroy.add(body);
             }
+            level.pigs.removeValue(this, true); // Remove from game objects
         }
     }
 
-    private void die() {
-        level.world.destroyBody(body);
+    // Create Box2D body with circle shape
+    private void createCircle() {
+        pDef = new BodyDef();
+        pDef.type = BodyDef.BodyType.DynamicBody;
+        pDef.position.set(posx / MainLevel.ppm, posy / MainLevel.ppm);  // Initial position
+
+        body = level.world.createBody(pDef);
+
+        CircleShape cShape = new CircleShape();
+        cShape.setRadius(rad / MainLevel.ppm); // Set radius based on pig size
+
+        body.createFixture(cShape, 1.0f);
+        cShape.dispose();
     }
 
-    public boolean isDead() {
-        return isDead;
-    }
+    // Render the pig texture at the body's position and rotation
+    public void render(float delta) {
+        level.game.getBatch().begin();
 
-    public void render() {
-        if (!isDead) {
-            level.gameBatch.begin();
-            level.gameBatch.draw(texture, body.getPosition().x * MainLevel.ppm - texture.getWidth() / 2,
-                body.getPosition().y * MainLevel.ppm - texture.getHeight() / 2);
-            level.gameBatch.end();
-        }
-    }
+        Vector2 position = body.getPosition();
+        float angle = body.getAngle() * MathUtils.radiansToDegrees;
 
-    public void dispose() {
-        texture.dispose();
+        level.game.getBatch().draw(
+            texture,
+            position.x * level.ppm - textureWidth / 2,
+            position.y * level.ppm - textureHeight / 2,
+            textureWidth / 2, textureHeight / 2,
+            textureWidth, textureHeight,
+            1, 1,
+            angle,
+            0, 0,
+            texture.getWidth(), texture.getHeight(),
+            false, false
+        );
+
+        level.game.getBatch().end();
     }
 }

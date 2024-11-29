@@ -1,170 +1,264 @@
 package com.angrybird;
 
-//import Sprites.birds.Bird;
-//import Sprites.pigs.Pig;
-import com.angrybird.FirstScreen;
-import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 
-public class MainLevel implements ApplicationListener {
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 
-    public static final float ppm = 100f; // pixels per meter (for Box2D scaling)
+public class MainLevel implements Screen {
+    public static final float ppm = 100f; // Pixels per meter
     public World world;
-    public SpriteBatch gameBatch;
+    private Box2DDebugRenderer b2dr;
+    public MyAngryBird game;
     public OrthographicCamera camera;
-    public Array<Bird> birds;
-    public Array<Pig> pigs;
-    public Texture backgroundTexture;
-    public FirstScreen game;
+    public ShapeRenderer shapeRenderer;
+
+    public Texture menu_inac;
+    public Texture menu_ac;
+    public Texture ground;
+
+    public Array<Material> blocks; // Array for all glass blocks
+    public Array<Pig> pigs;    // Array for all pigs
+    public Array<Bird> birds;       // Array for all birds
+    private catapult catp;
+
+    public Array<Body> bodiesToDestroy;
+    private boolean start_collision = false;
+
     private int currentBirdIndex = 0;
-    ShapeRenderer shapeRenderer;
+    private static final float launchX = 535; // In pixels
+    private static final float launchY = 375; // In pixels
 
-    @Override
-    public void create() {
-        world = new World(new Vector2(0, -9.8f), true); // Gravity (in this case, downward)
-        gameBatch = new SpriteBatch();
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        shapeRenderer = new ShapeRenderer();
-        // Load background and other static elements
-        backgroundTexture = new Texture("background.png");
+    private Queue<Runnable> scheduledTasks;
 
-        // Initialize the birds and pigs for this level
-        birds = new Array<>();
-        pigs = new Array<>();
 
-        // Add birds to the level (example)
-        birds.add(new RedBird(this, 100, 300)); // RedBird is a subclass of Bird
+    public MainLevel(MyAngryBird game) {
+        this.game = game;
 
-        // Add pigs to the level
-        pigs.add(new Pig(this, 500, 300, 2)); // Pig with 2 health
-        pigs.add(new Pig(this, 600, 300, 1)); // Pig with 1 health
-    }
+        // Load shared textures
+        menu_inac = new Texture("Menu Inactive.png");
+        menu_ac = new Texture("Menu active.png");
+        ground = new Texture("ground.png");
 
-    @Override
-    public void render() {
-        Gdx.gl.glClearColor(0.5f, 0.5f, 0.5f, 1); // Gray background
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        bodiesToDestroy = new Array<>();
+        scheduledTasks = new LinkedList<>();
+
+        // Initialize camera, world, and debug renderer
+        camera = new OrthographicCamera(Gdx.graphics.getWidth() / ppm, Gdx.graphics.getHeight() / ppm);
+        world = new World(new Vector2(0, -9.81f), true);
+        b2dr = new Box2DDebugRenderer();
+        camera.position.set(camera.viewportWidth / 2, camera.viewportHeight / 2, 0);
         camera.update();
 
-        gameBatch.setProjectionMatrix(camera.combined);
+        shapeRenderer = new ShapeRenderer();
 
-        gameBatch.begin();
-        gameBatch.draw(backgroundTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-        gameBatch.end();
+        // Create catapult and ground
+        catp = new catapult(game, camera);
+        createGround();
 
-        // Render pigs
-        for (Pig pig : pigs) {
-            pig.render();
-        }
+        // Initialize entity arrays
+        blocks = new Array<>();
+        pigs = new Array<>();
+        birds = new Array<>();
 
-        // Render birds
-        for (Bird bird : birds) {
-            bird.render(Gdx.graphics.getDeltaTime());
-        }
-
-        // Render shapes using ShapeRenderer
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-
-        // Example: Drawing a line from a bird's position
-        if (!birds.isEmpty()) {
-            Bird currentBird = birds.get(currentBirdIndex);
-            if (!currentBird.hasLaunched) {
-                shapeRenderer.setColor(Color.RED);  // Set color for the line
-                shapeRenderer.line(currentBird.position.x, currentBird.position.y,
-                    Gdx.input.getX(), Gdx.graphics.getHeight() - Gdx.input.getY()); // Drag line
-            }
-        }
-
-        shapeRenderer.end();
-
-        world.step(Gdx.graphics.getDeltaTime(), 6, 2);
-
-        if (birds.size > currentBirdIndex) {
-            Bird currentBird = birds.get(currentBirdIndex);
-            if (!currentBird.hasLaunched) {
-                if (Gdx.input.isTouched()) {
-                    currentBird.startDrag(new Vector2(Gdx.input.getX(), Gdx.input.getY()));
-                } else {
-                    currentBird.release();
-                    currentBirdIndex++;
-                }
-            }
-        }
-
-        for (Pig pig : pigs) {
-            if (!pig.isDead()) {
-                for (Bird bird : birds) {
-                    if (bird.hasLaunched) {
-                        bird.impactPig();  // Apply impact on pigs
-                    }
-                }
-            }
-        }
-
-        checkLevelStatus();
+        setupInputHandling();
+        setupContactListener();
     }
 
-    private void checkLevelStatus() {
-        boolean allPigsDead = true;
-        for (Pig pig : pigs) {
-            if (!pig.isDead()) {
-                allPigsDead = false;
-                break;
+    private void createGround() {
+        BodyDef gbDef = new BodyDef();
+        gbDef.position.set(0, 0);
+
+        Body gBody = world.createBody(gbDef);
+
+        PolygonShape gShape = new PolygonShape();
+        gShape.setAsBox(1920 / ppm, 205 / ppm);
+
+        FixtureDef fixtureDef = new FixtureDef();
+        fixtureDef.shape = gShape;
+        fixtureDef.density = 1.0f;      // Standard density
+        fixtureDef.friction = 5.0f;
+
+        gBody.createFixture(fixtureDef);
+        gShape.dispose();
+
+        //Right Boundary
+        BodyDef rightBoundDef = new BodyDef();
+        rightBoundDef.position.set(1950/ppm,0);
+
+        Body rBound = world.createBody(rightBoundDef);
+
+        PolygonShape rbShape = new PolygonShape();
+        rbShape.setAsBox(20/ppm,1080/ppm);
+
+        rBound.createFixture(rbShape,1.0f);
+        rbShape.dispose();
+    }
+
+    public void scheduleTask(Runnable task) {
+        scheduledTasks.add(task);
+    }
+
+
+    private void setupInputHandling() {
+        Gdx.input.setInputProcessor(new InputAdapter() {
+            @Override
+            public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+                Vector3 worldCoordinates = camera.unproject(new Vector3(screenX, screenY, 0));
+                Vector2 touchPos = new Vector2(worldCoordinates.x, worldCoordinates.y);
+
+                for (Bird bird : birds) {
+                    bird.startDrag(touchPos);
+                }
+                start_collision = true;
+                return true;
+            }
+
+            @Override
+            public boolean touchDragged(int screenX, int screenY, int pointer) {
+                Vector3 worldCoordinates = camera.unproject(new Vector3(screenX, screenY, 0));
+                Vector2 touchPos = new Vector2(worldCoordinates.x, worldCoordinates.y);
+
+                for (Bird bird : birds) {
+                    bird.drag(touchPos);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+                for (Bird bird : birds) {
+                    bird.release();
+                }
+                return true;
+            }
+        });
+    }
+
+    private void setupContactListener() {
+        world.setContactListener(new ContactListener() {
+            @Override
+            public void beginContact(Contact contact) {
+                Object a = contact.getFixtureA().getBody().getUserData();
+                Object b = contact.getFixtureB().getBody().getUserData();
+
+                if (a instanceof Material && start_collision) ((Material) a).handleCollision();
+                if (b instanceof Material && start_collision) ((Material) b).handleCollision();
+                if (a instanceof Pig && start_collision) ((Pig) a).handleCollision();
+                if (b instanceof Pig && start_collision) ((Pig) b).handleCollision();
+            }
+
+            @Override public void endContact(Contact contact) {}
+            @Override public void preSolve(Contact contact, Manifold oldManifold) {}
+            @Override public void postSolve(Contact contact, ContactImpulse impulse) {}
+        });
+    }
+
+    public void setupLevel(Array<Bird> birds, Array<Material> glassBlocks, Array<Pig> pigs) {
+        this.birds = birds;
+        this.blocks = glassBlocks;
+        this.pigs = pigs;
+    }
+
+    @Override
+    public void render(float delta) {
+        while (!scheduledTasks.isEmpty()) {
+            try {
+                scheduledTasks.poll().run();
+            } catch (Exception e) {
+                Gdx.app.log("Error", "Exception during task execution: " + e.getMessage());
             }
         }
 
-        if (allPigsDead) {
-            System.out.println("Level completed!");
+        world.step(1 / 100f, 8, 2); // Step the physics world
+        for (Body body : bodiesToDestroy) {
+            if (body != null) {
+                world.destroyBody(body);
+            }
+        }
+        bodiesToDestroy.clear();
+        camera.update();
+        b2dr.render(world, camera.combined);
+
+        game.getBatch().begin();
+        if (Gdx.input.getX()>30 && Gdx.input.getX()<menu_inac.getWidth()+30 && game.HEIGHT - Gdx.input.getY()> MyAngryBird.HEIGHT-menu_ac.getHeight()-30 && game.HEIGHT - Gdx.input.getY()<MyAngryBird.HEIGHT){
+            game.getBatch().draw(menu_ac,30-12,MyAngryBird.HEIGHT-menu_inac.getHeight()-30-12,130,128);
+            if (Gdx.input.isTouched()){
+//                game.setScreen(new PauseMenu(game));
+            }
+        }else{
+            game.getBatch().draw(menu_inac,30,MyAngryBird.HEIGHT-menu_inac.getHeight()-30);
         }
 
-        boolean allBirdsUsed = true;
+        game.getBatch().draw(ground,0,0);
+        game.getBatch().end();
+
+        // Render entities
+        Bird draggingBird = null;
         for (Bird bird : birds) {
-            if (!bird.hasLaunched) {
-                allBirdsUsed = false;
+            if (bird.isDragging) {
+                draggingBird = bird;
                 break;
             }
         }
+        catp.render(delta, draggingBird);
 
-        if (allBirdsUsed) {
-            System.out.println("Game Over!");
+        for (Bird bird : birds) {
+            bird.render(delta);
+        }
+        for (Material block : blocks) {
+            block.render(delta);
+        }
+        for (Pig pig : pigs) {
+            pig.render(delta);
+        }
+
+        if (currentBirdIndex < birds.size) {
+            Bird currentBird = birds.get(currentBirdIndex);
+            if (!currentBird.hasLaunched && !currentBird.isDragging) {
+                currentBird.body.setTransform(launchX / ppm, launchY / ppm, 0); // Place at launch position
+            } else if (currentBird.isReadyForRemoval()) {
+                // Destroy the bird and advance to the next one
+                bodiesToDestroy.add(currentBird.body);
+                birds.removeIndex(currentBirdIndex);
+            }
+        }
+
+        if (pigs.size == 0) {
+//            game.setScreen(new WinScreen(game));
+        }
+
+        // Check lose condition
+        if (birds.size == 0 && pigs.size > 0) {
+//            game.setScreen(new LooseScreen(game));
         }
     }
 
     @Override
     public void resize(int width, int height) {
-        camera.viewportWidth = width;
-        camera.viewportHeight = height;
-        camera.update();
+        camera.setToOrtho(false, width / ppm, height / ppm);
     }
 
     @Override
-    public void pause() {}
-    @Override
-    public void resume() {}
-    //@Override
-    //public void hide() {}
-    @Override
     public void dispose() {
         world.dispose();
-        gameBatch.dispose();
-        backgroundTexture.dispose();
-        for (Bird bird : birds) {
-            bird.texture.dispose();
-        }
-        for (Pig pig : pigs) {
-            pig.dispose();
-        }
+        b2dr.dispose();
         shapeRenderer.dispose();
     }
+
+    // Remaining methods left as is
+    @Override public void show() {}
+    @Override public void pause() {}
+    @Override public void resume() {}
+    @Override public void hide() {}
 }
